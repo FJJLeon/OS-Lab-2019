@@ -35,6 +35,12 @@ i386_init(void)
 	// Can't call cprintf until after we do this!
 	cons_init();
 
+	// added for test
+	int x = 1, y = 3, z = 4;
+	cprintf("x %d, y %x, z %d\n", x, y, z);
+	unsigned int i = 0x00646c72;
+	cprintf("H%x Wo%s", 57616, &i);
+	
 	cprintf("6828 decimal is %o octal!%n\n%n", 6828, &chnum1, &chnum2);
 	cprintf("pading space in the right to number 22: %-8d.\n", 22);
 	cprintf("chnum1: %d chnum2: %d\n", chnum1, chnum2);
