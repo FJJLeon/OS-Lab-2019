@@ -36,17 +36,36 @@ static void
 printnum(void (*putch)(int, void*), void *putdat,
 	 unsigned long long num, unsigned base, int width, int padc)
 {
-	// first recursively print all preceding (more significant) digits
-	if (num >= base) {
-		printnum(putch, putdat, num / base, base, width - 1, padc);
-	} else {
-		// print any needed pad characters before first digit
+	// if cprintf'parameter includes pattern of the form "%-", padding
+	// space on the right side if neccesary.
+	// you can add helper function if needed.
+	// your code here:
+	if (padc == '-') {
+		// print (more significant) digits
+		while (num / base) {
+			putch("0123456789abcdef"[num / base], putdat);
+			num /= base;
+			width--;
+		}
+		// print (the least significant) digit
+		putch("0123456789abcdef"[num % base], putdat);
+		// print padding on the right side
 		while (--width > 0)
-			putch(padc, putdat);
+			putch(' ', putdat);
 	}
+	else {
+		// first recursively print all preceding (more significant) digits
+		if (num >= base) {
+			printnum(putch, putdat, num / base, base, width - 1, padc);
+		} else {
+			// print any needed pad characters before first digit
+			while (--width > 0)
+				putch(padc, putdat);
+		}
 
-	// then print this (the least significant) digit
-	putch("0123456789abcdef"[num % base], putdat);
+		// then print this (the least significant) digit
+		putch("0123456789abcdef"[num % base], putdat);
+	}
 }
 
 // Get an unsigned int of various possible sizes from a varargs list,
@@ -85,7 +104,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	register const char *p;
 	register int ch, err;
 	unsigned long long num;
-	int base, lflag, width, precision, altflag;
+	int base, lflag, width, precision, altflag, preceflag;
 	char padc;
 
 	while (1) {
@@ -101,6 +120,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		precision = -1;
 		lflag = 0;
 		altflag = 0;
+		preceflag = 0;
 	reswitch:
 		switch (ch = *(unsigned char *) fmt++) {
 
@@ -143,6 +163,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 
 		case '#':
 			altflag = 1;
+			goto reswitch;
+
+		case '+':
+			preceflag = 1;
 			goto reswitch;
 
 		process_precision:
@@ -194,6 +218,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 				putch('-', putdat);
 				num = -(long long) num;
 			}
+			else if (preceflag) {
+				putch('+', putdat);
+			}
+
 			base = 10;
 			goto number;
 
@@ -206,10 +234,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			putch('X', putdat);
-			putch('X', putdat);
-			putch('X', putdat);
-			break;
+			num = getuint(&ap, lflag);
+			putch('0', putdat); // begin with '0'
+			base = 8;
+			goto number;
 
 		// pointer
 		case 'p':
@@ -227,6 +255,43 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		number:
 			printnum(putch, putdat, num, base, width, padc);
 			break;
+
+		case 'n': {
+				  // You can consult the %n specifier specification of the C99 printf function
+				  // for your reference by typing "man 3 printf" on the console. 
+
+				  // 
+				  // Requirements:
+				  // Nothing printed. The argument must be a pointer to a signed char, 
+				  // where the number of characters written so far is stored.
+				  //
+
+				  // hint:  use the following strings to display the error messages 
+				  //        when the cprintf function ecounters the specific cases,
+				  //        for example, when the argument pointer is NULL
+				  //        or when the number of characters written so far 
+				  //        is beyond the range of the integers the signed char type 
+				  //        can represent.
+
+				  const char *null_error = "\nerror! writing through NULL pointer! (%n argument)\n";
+				  const char *overflow_error = "\nwarning! The value %n argument pointed to has been overflowed!\n";
+
+				  // Your code here
+				  // store putdat to va_arg
+				  char *num_ch = va_arg(ap, char *);
+				  if (num_ch == NULL)
+					  printfmt(putch, putdat, "%s", null_error);
+				  else if (*(int *)putdat >= 256 - 1) {
+					  //printfmt(putch, putdat, "how much %d\n", *(int *)putdat);
+					  printfmt(putch, putdat, "%s", overflow_error);
+					  *num_ch = -1;
+				  }
+				  else
+					  *num_ch = *(char *)putdat;
+				  
+
+				  break;
+			  }
 
 		// escaped '%' character
 		case '%':

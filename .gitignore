@@ -16,3 +16,9 @@
 /sol?/
 /myapi.key
 /.suf
+.vscode
+*.tar.gz
+a.out
+*.pdf
+init.d
+init.s
