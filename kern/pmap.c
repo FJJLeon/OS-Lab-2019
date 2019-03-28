@@ -173,7 +173,7 @@ mem_init(void)
 	// Your code goes here:
 	pages = (struct PageInfo*) boot_alloc(sizeof(struct PageInfo) * npages);
 	memset(pages, 0, sizeof(struct PageInfo) * npages);
-
+	cprintf("sizeof PageInfo %d\n", sizeof(struct PageInfo));
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -220,6 +220,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
+	// boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
 	boot_map_region_large(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -231,11 +232,12 @@ mem_init(void)
 	//
 	// If the machine reboots at this point, you've probably set up your
 	// kern_pgdir wrong.
+	
 	// enable super page
 	cr4 = rcr4();
 	cr4 |= CR4_PSE;
 	lcr4(cr4);
-	
+
 	lcr3(PADDR(kern_pgdir));
 
 	check_page_free_list(0);

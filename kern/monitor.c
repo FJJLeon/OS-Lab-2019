@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -26,6 +27,7 @@ static struct Command commands[] = {
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Display a list of function call frames", mon_backtrace },
 	{ "time", "Display running time of the command", mon_checktime },
+	{ "showmappings", "Display a range of hysical page mappings", mon_showmappings },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -118,6 +120,45 @@ mon_checktime(int argc, char **argv, struct Trapframe *tf)
 	return res;
 }
 
+int 
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 3) {
+		cprintf("Usage: showmappings [begin VA] [end VA] in HEX\n");
+		return 0;
+	}
+	uintptr_t  begin_va, end_va;
+	char *endptr;
+	begin_va = strtol(argv[1], &endptr, 16);
+	if (*endptr) {
+		cprintf("showmappings begin va error\n");
+		return 0;
+	}
+	end_va = strtol(argv[2], &endptr, 16);
+	if (*endptr) {
+		cprintf("showmappings end va error\n");
+		return 0;
+	}
+	if (end_va < begin_va) {
+		cprintf("showmappings error");
+		return 0;
+	}
+
+	cprintf("show mapping between virtual address %x - %x", begin_va, end_va);
+	for (; begin_va < end_va; begin_va += PGSIZE) {
+		pte_t *pte = pgdir_walk(kern_pgdir, (void *) begin_va, 1);
+		if (!pte) 
+			panic("error");
+		if (*pte & PTE_P) {
+			cprintf("page %x with PTE_P: %x, PTE_W: %x, PTE_U: %x\n",
+				begin_va, *pte&PTE_P, *pte&PTE_W, *pte&PTE_U);
+		} 
+		else 
+			cprintf("page not exist %x\n", begin_va);
+	}
+	return 0;
+
+}
 /***** Kernel monitor command interpreter *****/
 
 #define WHITESPACE "\t\r\n "
