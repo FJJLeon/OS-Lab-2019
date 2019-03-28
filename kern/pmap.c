@@ -141,7 +141,7 @@ boot_alloc(uint32_t n)
 void
 mem_init(void)
 {
-	uint32_t cr0;
+	uint32_t cr0, cr4;
 	size_t n;
 
 	// Find out how much memory the machine has (npages & npages_basemem).
@@ -220,10 +220,10 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
+	boot_map_region_large(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
-
+	DEBUG("A2");
 	// Switch from the minimal entry page directory to the full kern_pgdir
 	// page table we just created.	Our instruction pointer should be
 	// somewhere between KERNBASE and KERNBASE+4MB right now, which is
@@ -231,6 +231,11 @@ mem_init(void)
 	//
 	// If the machine reboots at this point, you've probably set up your
 	// kern_pgdir wrong.
+	// enable super page
+	cr4 = rcr4();
+	cr4 |= CR4_PSE;
+	lcr4(cr4);
+	
 	lcr3(PADDR(kern_pgdir));
 
 	check_page_free_list(0);
@@ -241,7 +246,7 @@ mem_init(void)
 	cr0 |= CR0_PE|CR0_PG|CR0_AM|CR0_WP|CR0_NE|CR0_MP;
 	cr0 &= ~(CR0_TS|CR0_EM);
 	lcr0(cr0);
-
+	DEBUG("A1");
 	// Some more checks, only possible after kern_pgdir is installed.
 	check_page_installed_pgdir();
 }
@@ -453,14 +458,8 @@ boot_map_region_large(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, in
 {
 	// Fill this function in
 	int i;
-	for (i = 0; i < size; i += 0x400000) {
-		pde_t * target_pde = &pgdir[PDX(va+i)];
-		if((*target_pde & (PTE_P | PTE_PS)) != (PTE_P | PTE_PS)){
-		if(*target_pde & PTE_P){
-			cprintf("DANGEROUS!COVER OLD PT,UNTRACK PT\n");
-		}
-		*target_pde = (pa + i) | perm | PTE_P | PTE_PS;
-		}
+	for (i = 0; i < size; i += PTSIZE) {
+		pgdir[PDX(va + i)] = (pa + i) | perm | PTE_P | PTE_PS;
 	}
 }
 
