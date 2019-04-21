@@ -10,7 +10,7 @@
 #include <kern/env.h>
 #include <inc/queue.h>
 
-#define PPdebug 1
+#define PPdebug 0
 #define DEBUG(format, ...) do { \
     if (PPdebug)  \
         cprintf("[%s@%s,%d]\t" format "\n", \
@@ -104,7 +104,7 @@ boot_alloc(uint32_t n)
 	// to any kernel code or global variables.
 	if (!nextfree) {
 		extern char end[];
-		nextfree = ROUNDUP((char *) end, PGSIZE);
+		nextfree = ROUNDUP((char *) end+PGSIZE, PGSIZE);
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -114,9 +114,9 @@ boot_alloc(uint32_t n)
 	// LAB 2: Your code here.
 	if (n > 0) {
 		result = nextfree;
-		nextfree = ROUNDUP(nextfree + n, PGSIZE);
+		nextfree = KADDR(PADDR(ROUNDUP(nextfree + n, PGSIZE)));
 		// check out of memory
-		KADDR(PADDR(nextfree));
+		
 	} 
 	else if (n == 0) {
 		result = nextfree;
@@ -153,7 +153,19 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
 	kern_pgdir = (pde_t *) boot_alloc(PGSIZE);
-	memset(kern_pgdir, 0, PGSIZE);
+	cprintf("kern_pgdir : %08lx\n", kern_pgdir);
+	//memset(kern_pgdir, 0, 0);
+	/*
+	char *p = (char *)kern_pgdir;
+	int m = PGSIZE;
+	while (--m >= 0) {
+		*p++ = 0;
+		DEBUG("kern_pgdir : %08lx", kern_pgdir);
+	}
+	*/
+		
+	
+	DEBUG("kern_pgdir : %08lx", kern_pgdir);
 
 	//////////////////////////////////////////////////////////////////////
 	// Recursively insert PD in itself as a page table, to form
@@ -173,10 +185,13 @@ mem_init(void)
 	// Your code goes here:
 	pages = (struct PageInfo*) boot_alloc(sizeof(struct PageInfo) * npages);
 	memset(pages, 0, sizeof(struct PageInfo) * npages);
-	cprintf("sizeof PageInfo %d\n", sizeof(struct PageInfo));
+	cprintf("pages at %08lx, sizeof PageInfo %d\n", pages, sizeof(struct PageInfo));
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs  = (struct Env  * ) boot_alloc(NENV   * sizeof (struct Env ));
+	memset(envs, 0, sizeof(struct Env) * NENV);	
+	cprintf("envs at %08lx\n", envs);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -203,7 +218,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P);
+	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U);
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
 	// (ie. perm = PTE_U | PTE_P).
@@ -211,7 +226,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-
+	boot_map_region(kern_pgdir,UENVS             , PTSIZE   , PADDR(envs)     , PTE_U);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
