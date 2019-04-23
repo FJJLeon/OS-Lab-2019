@@ -18,7 +18,7 @@ static struct Taskstate ts;
 static struct Trapframe *last_tf;
 
 /* Interrupt descriptor table.  (Must be built at run time because
- * shifted function addresses can't be represented in relocation records.)
+ * shifted EP_FUNCtion addresses can't be represented in relocation records.)
  */
 struct Gatedesc idt[256] = { { 0 } };
 struct Pseudodesc idt_pd = {
@@ -58,6 +58,7 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+void EP_NONE() {};
 
 void
 trap_init(void)
@@ -65,7 +66,65 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	extern void EP_DIVIDE (); /* 0 */
+	extern void EP_DEBUG  (); /* 1 */
+	extern void EP_NMI    (); /* 2 */
+	extern void EP_BRKPT  (); /* 3 */
+	extern void EP_OFLOW  (); /* 4 */
+	extern void EP_BOUND  (); /* 5 */
+	extern void EP_ILLOP  (); /* 6 */
+	extern void EP_DEVICE (); /* 7 */
+	extern void EP_DBLFLT (); /* 8 */
+		   
+	extern void EP_TSS    (); /* 10 */
+	extern void EP_SEGNP  (); /* 11 */
+	extern void EP_STACK  (); /* 12 */
+	extern void EP_GPFLT  (); /* 13 */
+	extern void EP_PGFLT  (); /* 14 */
+		   
+	extern void EP_FPERR  (); /* 16 */
+	extern void EP_ALIGN  (); /* 17 */
+	extern void EP_MCHK   (); /* 18 */
+	extern void EP_SIMDERR(); /* 19 */
 
+	void (*EP_FUNC[]) () = {
+		EP_DIVIDE, EP_DEBUG, EP_NMI  , EP_BRKPT  ,
+		EP_OFLOW , EP_BOUND, EP_ILLOP, EP_DEVICE ,
+		EP_DBLFLT, EP_NONE , EP_TSS  , EP_SEGNP  ,
+		EP_STACK , EP_GPFLT, EP_PGFLT, EP_NONE   ,
+		EP_FPERR , EP_ALIGN, EP_MCHK , EP_SIMDERR,
+	};
+
+	for (int i=0; i<20; i++) {
+		if (i == 9 || i == 15)
+			continue;
+		unsigned gd_dpl = 0;
+		if (i == T_BRKPT) 
+			gd_dpl = 3;
+		SETGATE(idt[i], 0, GD_KT, EP_FUNC[i], gd_dpl);
+	}
+	/*
+	SETGATE(idt[T_DIVIDE ],0,GD_KT,EP_DIVIDE ,0);
+	SETGATE(idt[T_DEBUG  ],0,GD_KT,EP_DEBUG  ,0);
+	SETGATE(idt[T_NMI    ],0,GD_KT,EP_NMI    ,0);
+	SETGATE(idt[T_BRKPT  ],0,GD_KT,EP_BRKPT  ,3);
+	SETGATE(idt[T_OFLOW  ],0,GD_KT,EP_OFLOW  ,0);
+	SETGATE(idt[T_BOUND  ],0,GD_KT,EP_BOUND  ,0);
+	SETGATE(idt[T_ILLOP  ],0,GD_KT,EP_ILLOP  ,0);
+	SETGATE(idt[T_DEVICE ],0,GD_KT,EP_DEVICE ,0);
+	SETGATE(idt[T_DBLFLT ],0,GD_KT,EP_DBLFLT ,0);
+	//SETGATE(idt[T_COPROC ],0,GD_KT,EP_COPROC ,0);
+	SETGATE(idt[T_TSS    ],0,GD_KT,EP_TSS    ,0);
+	SETGATE(idt[T_SEGNP  ],0,GD_KT,EP_SEGNP  ,0);
+	SETGATE(idt[T_STACK  ],0,GD_KT,EP_STACK  ,0);
+	SETGATE(idt[T_GPFLT  ],0,GD_KT,EP_GPFLT  ,0);
+	SETGATE(idt[T_PGFLT  ],0,GD_KT,EP_PGFLT  ,0);
+	//SETGATE(idt[T_RES    ],0,GD_KT,EP_RES    ,0);
+	SETGATE(idt[T_FPERR  ],0,GD_KT,EP_FPERR  ,0);
+	SETGATE(idt[T_ALIGN  ],0,GD_KT,EP_ALIGN  ,0);
+	SETGATE(idt[T_MCHK   ],0,GD_KT,EP_MCHK   ,0);
+	SETGATE(idt[T_SIMDERR],0,GD_KT,EP_SIMDERR,0);
+	*/
 	// Per-CPU setup 
 	trap_init_percpu();
 }
