@@ -23,7 +23,7 @@ static struct Taskstate ts;
 static struct Trapframe *last_tf;
 
 /* Interrupt descriptor table.  (Must be built at run time because
- * shifted function addresses can't be represented in relocation records.)
+ * shifted EP_FUNCtion addresses can't be represented in relocation records.)
  */
 struct Gatedesc idt[256] = { { 0 } };
 struct Pseudodesc idt_pd = {
@@ -65,6 +65,7 @@ static const char *trapname(int trapno)
 	return "(unknown trap)";
 }
 
+void EP_NONE() {};
 
 void
 trap_init(void)
@@ -72,6 +73,51 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
+	extern void EP_DIVIDE (); /* 0 */
+	extern void EP_DEBUG  (); /* 1 */
+	extern void EP_NMI    (); /* 2 */
+	extern void EP_BRKPT  (); /* 3 */
+	extern void EP_OFLOW  (); /* 4 */
+	extern void EP_BOUND  (); /* 5 */
+	extern void EP_ILLOP  (); /* 6 */
+	extern void EP_DEVICE (); /* 7 */
+	extern void EP_DBLFLT (); /* 8 */
+		   
+	extern void EP_TSS    (); /* 10 */
+	extern void EP_SEGNP  (); /* 11 */
+	extern void EP_STACK  (); /* 12 */
+	extern void EP_GPFLT  (); /* 13 */
+	extern void EP_PGFLT  (); /* 14 */
+		   
+	extern void EP_FPERR  (); /* 16 */
+	extern void EP_ALIGN  (); /* 17 */
+	extern void EP_MCHK   (); /* 18 */
+	extern void EP_SIMDERR(); /* 19 */
+
+	extern void EP_SYSCALL(); /* 48 */
+
+	void (*EP_FUNC[]) () = {
+		EP_DIVIDE, EP_DEBUG, EP_NMI  , EP_BRKPT  ,
+		EP_OFLOW , EP_BOUND, EP_ILLOP, EP_DEVICE ,
+		EP_DBLFLT, EP_NONE , EP_TSS  , EP_SEGNP  ,
+		EP_STACK , EP_GPFLT, EP_PGFLT, EP_NONE   ,
+		EP_FPERR , EP_ALIGN, EP_MCHK , EP_SIMDERR,
+	};
+	// use SETGATE to set idt
+	for (int i=0; i<20; i++) {
+		if (i == 9 || i == 15)
+			continue;
+		unsigned gd_dpl = 0;
+		if (i == T_BRKPT) 
+			gd_dpl = 3;
+		SETGATE(idt[i], 0, GD_KT, EP_FUNC[i], gd_dpl);
+	}
+	// set syscall idt
+	//SETGATE(idt[T_SYSCALL], 0, GD_KT, EP_SYSCALL, 3);
+	extern void sysenter_handler();
+  	wrmsr(0x174, GD_KT, 0);           /* SYSENTER_CS_MSR */
+  	wrmsr(0x175, KSTACKTOP, 0);       /* SYSENTER_ESP_MSR */
+	wrmsr(0x176, sysenter_handler, 0);/* SYSENTER_EIP_MSR */
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -176,6 +222,29 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	switch(tf->tf_trapno) {
+		case T_BRKPT:
+			monitor(tf);
+			return;
+		case T_PGFLT:
+			cprintf("page fault\n");
+			page_fault_handler(tf);
+			break;
+		case T_SYSCALL:
+			cprintf("syscall\n");
+			tf->tf_regs.reg_eax = syscall(
+					tf->tf_regs.reg_eax,
+					tf->tf_regs.reg_edx,
+					tf->tf_regs.reg_ecx,
+					tf->tf_regs.reg_ebx,
+					tf->tf_regs.reg_edi,
+					tf->tf_regs.reg_esi 
+				);
+			return;
+		default:
+			cprintf("trap num : %d\n", tf->tf_trapno);
+			break;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -271,7 +340,8 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-
+	if (0 == (tf->tf_cs & 0x3))
+		panic("kernel page fault");
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 

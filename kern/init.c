@@ -32,7 +32,9 @@ i386_init(void)
 
 	// Lab 3 user environment initialization functions
 	env_init();
+	cprintf("env_init ok\n");
 	trap_init();
+	cprintf("trap_init ok\n");;
 
 	// Lab 4 multiprocessor initialization functions
 	mp_init();
@@ -57,6 +59,9 @@ i386_init(void)
 
 	// Schedule and run the first user environment!
 	sched_yield();
+	cprintf("env create ok\n");
+	// We only have one user environment for now, so just run it.
+	env_run(&envs[0]);
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core

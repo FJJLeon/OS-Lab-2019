@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -25,6 +26,9 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display a list of function call frames", mon_backtrace },
+	{ "time", "Display running time of the command", mon_checktime },
+	{ "showmappings", "Display a range of hysical page mappings", mon_showmappings },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -59,11 +63,103 @@ int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
 	// Your code here.
+	//overflow_me();
+	cprintf("Stack backtrace:\n");
+
+	uint32_t *ebp, *eip;
+	uint32_t args[5];
+	ebp = (uint32_t *)read_ebp();
+
+	while ((uint32_t)ebp != 0) {
+		// get return address and arguments 
+		eip = (uint32_t *) *(ebp + 1); 
+		for (int i=0; i<5; i++) {
+			args[i] = *(ebp + i + 2);
+		}
+		cprintf("  eip %x ebp %x args %08x %08x %08x %08x %08x\n",
+			 eip, ebp, args[0], args[1], args[2], args[3], args[4]);
+		struct Eipdebuginfo info; 
+		debuginfo_eip((uintptr_t)eip, &info);
+		//cprintf(" what is info: file %s:%d func %s len:%d arg:%d addr:%x\n", 
+		//	info.eip_file, info.eip_line, info.eip_fn_name, info.eip_fn_namelen, info.eip_fn_narg, info.eip_fn_addr);
+		cprintf("\t%s:%d %.*s+%x\n", 
+			info.eip_file, info.eip_line,
+			info.eip_fn_namelen, info.eip_fn_name, (uint32_t)eip - (uint32_t)info.eip_fn_addr);
+		ebp = (uint32_t *) *ebp;
+	}
+
+	cprintf("Backtrace success\n");
 	return 0;
 }
 
+uint64_t rdtsc()
+{
+        uint32_t lo,hi;
+        __asm__ __volatile__("rdtsc":"=a"(lo),"=d"(hi));
+        return (uint64_t)hi<<32 | lo;
+}
 
+int
+mon_checktime(int argc, char **argv, struct Trapframe *tf)
+{
+	uint64_t begin = 0, end = 1;
+	int res = -1;
+	//cprintf("args %d, argu %s, %s\n", argc, argv[0], argv[1]);
+	char *targetcmd = argv[1];
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		if (strcmp(targetcmd, commands[i].name) == 0) {
+			begin = rdtsc();
+			res = commands[i].func(argc-1, argv+1, tf);
+			end = rdtsc();
+		}
+	}
+	if (res < 0)
+		cprintf("Unknown command '%s'\n", targetcmd);
+	else
+		cprintf("%s cycles: %llu\n", targetcmd, end - begin);
 
+	return res;
+}
+
+int 
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 3) {
+		cprintf("Usage: showmappings [begin VA] [end VA] in HEX\n");
+		return 0;
+	}
+	uintptr_t  begin_va, end_va;
+	char *endptr;
+	begin_va = strtol(argv[1], &endptr, 16);
+	if (*endptr) {
+		cprintf("showmappings begin va error\n");
+		return 0;
+	}
+	end_va = strtol(argv[2], &endptr, 16);
+	if (*endptr) {
+		cprintf("showmappings end va error\n");
+		return 0;
+	}
+	if (end_va < begin_va) {
+		cprintf("showmappings error");
+		return 0;
+	}
+
+	cprintf("show mapping between virtual address %x - %x", begin_va, end_va);
+	for (; begin_va < end_va; begin_va += PGSIZE) {
+		pte_t *pte = pgdir_walk(kern_pgdir, (void *) begin_va, 1);
+		if (!pte) 
+			panic("error");
+		if (*pte & PTE_P) {
+			cprintf("page %x with PTE_P: %x, PTE_W: %x, PTE_U: %x\n",
+				begin_va, *pte&PTE_P, *pte&PTE_W, *pte&PTE_U);
+		} 
+		else 
+			cprintf("page not exist %x\n", begin_va);
+	}
+	return 0;
+
+}
 /***** Kernel monitor command interpreter *****/
 
 #define WHITESPACE "\t\r\n "
