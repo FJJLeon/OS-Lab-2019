@@ -361,6 +361,12 @@ page_init(void)
 	i++;
 	// 2, UTEMP ~ IOPHYSMEM = [PGSIZE, npages_basemem * PGSIZE)
 	for (; i < npages_basemem; ++i) {
+		// remove MPENTRY_PADDR
+		if (i == MPENTRY_PADDR / PGSIZE) {
+			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
+			continue;
+		}
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
@@ -677,7 +683,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	physaddr_t round_pa = ROUNDDOWN(pa, PGSIZE);
+	size = ROUNDUP(size+(pa-round_pa), PGSIZE);
+	uintptr_t result = base;
+	base += size;
+	if (result + size >= MMIOLIM)
+		panic("reservation mmio overflow MMIOLIM");
+	boot_map_region(kern_pgdir, base, size, round_pa, PTE_PCD|PTE_PWT|PTE_W);
+	//panic("mmio_map_region not implemented");
+	// return the base of the reserved region
+	return (void *)result;
 }
 
 static uintptr_t user_mem_check_addr;
