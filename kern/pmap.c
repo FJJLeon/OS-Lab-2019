@@ -253,8 +253,8 @@ mem_init(void)
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
 
-	// boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
-	boot_map_region_large(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
+	boot_map_region(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
+	//boot_map_region_large(kern_pgdir, KERNBASE, -KERNBASE, 0, PTE_W);
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
 	DEBUG("A2");
@@ -267,10 +267,11 @@ mem_init(void)
 	// kern_pgdir wrong.
 	
 	// enable super page
+	/*
 	cr4 = rcr4();
 	cr4 |= CR4_PSE;
 	lcr4(cr4);
-
+	*/
 	lcr3(PADDR(kern_pgdir));
 
 	check_page_free_list(0);
