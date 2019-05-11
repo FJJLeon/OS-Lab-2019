@@ -113,11 +113,11 @@ trap_init(void)
 		SETGATE(idt[i], 0, GD_KT, EP_FUNC[i], gd_dpl);
 	}
 	// set syscall idt
-	//SETGATE(idt[T_SYSCALL], 0, GD_KT, EP_SYSCALL, 3);
-	extern void sysenter_handler();
-  	wrmsr(0x174, GD_KT, 0);           /* SYSENTER_CS_MSR */
-  	wrmsr(0x175, KSTACKTOP, 0);       /* SYSENTER_ESP_MSR */
-	wrmsr(0x176, sysenter_handler, 0);/* SYSENTER_EIP_MSR */
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, EP_SYSCALL, 3);
+	//extern void sysenter_handler();
+  	//wrmsr(0x174, GD_KT, 0);           /* SYSENTER_CS_MSR */
+  	//wrmsr(0x175, KSTACKTOP, 0);       /* SYSENTER_ESP_MSR */
+	//wrmsr(0x176, sysenter_handler, 0);/* SYSENTER_EIP_MSR */
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -169,11 +169,12 @@ trap_init_percpu(void)
 	ltr(GD_TSS0 + (id << 3));
 	// Load the IDT
 	lidt(&idt_pd);
+
+	//extern void sysenter_handler();
+	//wrmsr(0x174, GD_KT, 0);                   /* SYSENTER_CS_MSR */
+	//wrmsr(0x175, thiscpu->cpu_ts.ts_esp0 , 0);/* SYSENTER_ESP_MSR */
+	//wrmsr(0x176, sysenter_handler, 0);        /* SYSENTER_EIP_MSR */
 	
-	extern void sysenter_handler();
-	wrmsr(0x174, GD_KT, 0);                   /* SYSENTER_CS_MSR */
-	wrmsr(0x175, thiscpu->cpu_ts.ts_esp0 , 0);/* SYSENTER_ESP_MSR */
-	wrmsr(0x176, sysenter_handler, 0);        /* SYSENTER_EIP_MSR */
 	//cprintf("trap_init percpu return in cpu %d\n", id);
 	/*
 	// Setup a TSS so that we get the right stack
@@ -255,7 +256,7 @@ trap_dispatch(struct Trapframe *tf)
 			page_fault_handler(tf);
 			break;
 		case T_SYSCALL:
-			cprintf("syscall\n");
+			//cprintf("syscall\n");
 			tf->tf_regs.reg_eax = syscall(
 					tf->tf_regs.reg_eax,
 					tf->tf_regs.reg_edx,
