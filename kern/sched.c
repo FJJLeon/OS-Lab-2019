@@ -30,15 +30,16 @@ sched_yield(void)
 
 	// LAB 4: Your code here.
 	idle = thiscpu->cpu_env;
-	uint32_t start = (idle != NULL) ? ENVX(idle->env_id) : 0;
+	envid_t start = (idle != NULL) ? ENVX(idle->env_id) : 0;
 	bool first = true;
-	for (uint32_t i = start; i != start || first; i = (i+1)%NENV, first = false) {
+	for (envid_t i = start; i != start || first; i = (i+1)%NENV, first = false) {
 		if (envs[i].env_status == ENV_RUNNABLE) {
 			env_run(&envs[i]);
 			return;
 		}
 	}
-	if (idle && idle->env_status == ENV_RUNNABLE) {
+	// why idle is ENV_RUNNING
+	if (idle && idle->env_status == ENV_RUNNING) {
 		env_run(idle);
 		return;
 	}
