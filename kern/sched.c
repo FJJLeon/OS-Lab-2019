@@ -32,15 +32,25 @@ sched_yield(void)
 	idle = thiscpu->cpu_env;
 	envid_t start = (idle != NULL) ? ENVX(idle->env_id) : 0;
 	bool first = true;
+	struct Env *chosen = NULL; // store min priority
 	for (envid_t i = start; i != start || first; i = (i+1)%NENV, first = false) {
 		if (envs[i].env_status == ENV_RUNNABLE) {
-			env_run(&envs[i]);
-			return;
+			// not chosen or envs[i] have higher priority
+			if (chosen==NULL || envs[i].env_pr < chosen->env_pr)
+				chosen = &envs[i];
+			//env_run(&envs[i]);
+			//return;
 		}
 	}
 	// why idle is ENV_RUNNING
-	if (idle && idle->env_status == ENV_RUNNING) {
+	if (idle && idle->env_status == ENV_RUNNING &&
+		// if chosen's priority is lower then idle
+		(chosen == NULL || chosen->env_pr > idle->env_pr)) {
 		env_run(idle);
+		return;
+	}
+	if (chosen) {
+		env_run(chosen);
 		return;
 	}
 

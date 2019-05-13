@@ -413,6 +413,15 @@ sys_sbrk(uint32_t inc)
   	return curenv->env_heap;
 }
 
+static int
+sys_set_pr(int priority)
+{
+	if (priority < 0 || priority > 10)
+		return -E_INVAL;
+	curenv->env_pr = priority;
+	return 0;
+}
+
 // Dispatches to the correct kernel function, passing the arguments.
 int32_t
 syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -455,6 +464,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_ipc_recv((void *)a1);
 		case SYS_ipc_try_send:
 			return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void *)a3, (unsigned)a4);
+		case SYS_set_pr:
+			return sys_set_pr((int)a1);
 		default:
 			return -E_INVAL;
 	}

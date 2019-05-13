@@ -78,6 +78,7 @@ envid_t	sfork(void);	// Challenge!
 int sys_sbrk(uint32_t inc);
 int sys_map_kernel_page(void* kpage, void* va);
 
+int sys_set_pr(int priority); // for fixed-priority scheduler
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */

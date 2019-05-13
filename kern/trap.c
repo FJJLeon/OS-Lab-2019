@@ -286,7 +286,7 @@ trap_dispatch(struct Trapframe *tf)
 			monitor(tf);
 			return;
 		case T_PGFLT:
-			cprintf("page fault\n");
+			//cprintf("page fault\n");
 			page_fault_handler(tf);
 			break;
 		case T_SYSCALL:
@@ -301,7 +301,7 @@ trap_dispatch(struct Trapframe *tf)
 				);
 			return;
 		default:
-			cprintf("trap num : %d\n", tf->tf_trapno);
+			//cprintf("trap num : %d\n", tf->tf_trapno);
 			break;
 	}
 

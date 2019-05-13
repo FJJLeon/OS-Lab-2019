@@ -18,6 +18,7 @@ enum {
 	SYS_ipc_recv,
     SYS_map_kernel_page,
     SYS_sbrk,
+	SYS_set_pr,
 	NSYSCALLS
 };
 

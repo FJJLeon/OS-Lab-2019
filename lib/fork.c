@@ -118,6 +118,8 @@ fork(void)
 	if (envid == 0) {
 		// child process, fix thisenv
 		thisenv = &envs[ENVX(sys_getenvid())];
+		//cprintf("fork getenvid in child: %08x\n", sys_getenvid());
+		sys_set_pr(0);
 		return envid; // 0
 	}
 	// parent process

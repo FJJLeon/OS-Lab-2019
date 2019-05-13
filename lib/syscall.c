@@ -150,3 +150,9 @@ sys_sbrk(uint32_t inc)
 {
 	return syscall(SYS_sbrk, 0, (uint32_t)inc, (uint32_t)0, 0, 0, 0);
 }
+
+int
+sys_set_pr(int priority)
+{
+	return syscall(SYS_set_pr, 0, priority, 0, 0, 0, 0);
+}
