@@ -1,0 +1,16 @@
+Lab3 Questions
+516030910006 方俊杰
+
+1. 因为不同的 exception/interrupt 会存在 error code 是否需要push 的情况，若用同一个handler 无法做到
+
+2. 在SETGATE 宏中介绍，idt 中的 gd_dpl 设定 DPL(描述符权限级别)，规定了trap发生来源
+软件是不能直接使用 int 指令产生 gd_dpl 为 0 的 trap，只能由硬件发出。如果想要让他能发出，
+就把 14 即 T_PGFLT 对应的 SETGATE 的 gd_dpl 设为 3，就可以发生了，
+但是实际上不应该这样做，这会导致软件能够告诉内核发生了 page fault，破坏内核对内存的管理。
+
+3. ``int3`` 最初也只时产生了 ``general protection fault``，而不是 ``break point exception``。
+理由类似，软件不同发出 gd_dpl 设为 0 的中断。修改 ``trap_init``，将 T_BRKPT 对应的 gd_dpl 设置为 3 即可。
+
+4. 为什么要有这种机制呢？因为 interrupt 机制是操作系统工作的最重要机制，
+如果user可以用软件随意引发中断或者异常，可能会对kernel 造成严重后果，
+比如像 ``softint`` 软件随意引发 page fault会使得内核无法管理页表，但是 int3 可能不会对环境造成破坏。
