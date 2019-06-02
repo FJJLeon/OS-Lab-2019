@@ -72,15 +72,21 @@ duppage(envid_t envid, unsigned pn)
 	int perm = PTE_U | PTE_P;
 	if (pte & (PTE_W | PTE_COW))
 		perm |= PTE_COW;
-	
-	// map to child va
-	if ((r = sys_page_map((envid_t)0, addr, envid, addr, perm)) < 0)
-		panic("duppage, page map child fail %e", r);
-	// if COW, remap our mapping
-	if (perm & PTE_COW) {
-		if ((r = sys_page_map((envid_t)0, addr, 0, addr, perm)) < 0)
-			panic("duppage, page map self fail %e", r);
+	if (pte & PTE_SHARE) {
+		if ((r = sys_page_map((envid_t)0, addr, envid, addr, pte & PTE_SYSCALL)) < 0)
+			panic("duppage, shared page map child fail %e", r);
+	} 
+	else {
+		// map to child va
+		if ((r = sys_page_map((envid_t)0, addr, envid, addr, perm)) < 0)
+			panic("duppage, page map child fail %e", r);
+		// if COW, remap our mapping
+		if (perm & PTE_COW) {
+			if ((r = sys_page_map((envid_t)0, addr, 0, addr, perm)) < 0)
+				panic("duppage, page map self fail %e", r);
+		}
 	}
+	
 	return 0;
 }
 

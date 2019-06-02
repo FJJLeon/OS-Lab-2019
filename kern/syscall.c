@@ -155,7 +155,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// Enable interrupts while in user mode
 	e->env_tf.tf_eflags |= FL_IF;
 	// IOPL of 0
-	e->env_tf.tf_eflags |= FL_IOPL_0;
+	//e->env_tf.tf_eflags |= FL_IOPL_3;
 	return 0;
 }
 
