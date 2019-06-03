@@ -1,6 +1,50 @@
 
 #include "fs.h"
-static void *last_addr = NULL;
+
+#ifdef EVICTFLAG
+#define BCSIZE 5
+static void *bcarray[BCSIZE];
+static uint32_t free_index = 0;
+static uint32_t first_in = 0;
+
+static void fifo_evict(void *addr, uint32_t blockno) 
+{
+	int r;
+
+	assert(PGOFF(addr) == 0);
+	// cache not full
+	if (free_index < BCSIZE) {
+		cprintf("EVICT: No. map block %d at 0x%08x\n", blockno, (uint32_t)addr);
+		if ((r = sys_page_alloc(0, addr, PTE_P|PTE_U|PTE_W)) < 0)
+			panic("in bc_pgfault, page alloc failed %e", r);
+		if ((r = ide_read(blockno*BLKSECTS, addr, BLKSECTS)) < 0)
+			panic("ide_read fail: %e", r);
+		// Clear the dirty bit for the disk block page since we just read the
+		// block from disk
+		if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+			panic("in bc_pgfault, sys_page_map: %e", r);
+		bcarray[free_index++] = addr;
+	}
+	else {
+		void *evict_addr = bcarray[first_in];
+		cprintf("EVICT: YES. evict 0x%08x with 0x%08x to map block %d\n", 
+			(uint32_t)evict_addr, (uint32_t)addr, blockno);
+		if (uvpt[PGNUM(evict_addr)] & PTE_D)
+			flush_block(evict_addr);
+		if ((r = sys_page_map(0, evict_addr, 0, addr, PTE_SYSCALL)) < 0)
+			panic("map failed %e", r);
+		if ((r = sys_page_unmap(0, evict_addr)) < 0)
+			panic("unmap failed %e", r);
+		if ((r = ide_read(blockno*BLKSECTS, addr, BLKSECTS)) < 0)
+			panic("ide_read fail: %e", r);
+		if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+			panic("sys_page_map: %e", r);
+		bcarray[first_in] = addr;
+		first_in = (first_in + 1) % BCSIZE;
+	}
+}
+#endif
+
 // Return the virtual address of this disk block.
 void*
 diskaddr(uint32_t blockno)
@@ -48,17 +92,46 @@ bc_pgfault(struct UTrapframe *utf)
 	// the disk.
 	//
 	// LAB 5: you code here:
+	//cprintf("bc_pgfault at 0x%08x\n", addr);
 	addr = ROUNDDOWN(addr, BLKSIZE);
+	
+	/*
 	if ((r = sys_page_alloc(0, addr, PTE_P|PTE_U|PTE_W)) < 0)
 		panic("in bc_pgfault, page alloc failed %e", r);
 	if ((r = ide_read(blockno*BLKSECTS, addr, BLKSECTS)) < 0)
 		panic("ide_read fail: %e", r);
-	
+	*/
+#ifdef EVICTFLAG
+	if (blockno <= 2) {
+		cprintf(" permanent block %d\n", blockno);
+		if ((r = sys_page_alloc(0, addr, PTE_P|PTE_U|PTE_W)) < 0)
+			panic("in bc_pgfault, page alloc failed %e", r);
+		if ((r = ide_read(blockno*BLKSECTS, addr, BLKSECTS)) < 0)
+			panic("ide_read fail: %e", r);
+		// Clear the dirty bit for the disk block page since we just read the
+		// block from disk
+		if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+			panic("in bc_pgfault, sys_page_map: %e", r);
+	} else {
+		fifo_evict(addr, blockno);
+	}
+#else
+	if ((r = sys_page_alloc(0, addr, PTE_P|PTE_U|PTE_W)) < 0)
+			panic("in bc_pgfault, page alloc failed %e", r);
+	if ((r = ide_read(blockno*BLKSECTS, addr, BLKSECTS)) < 0)
+		panic("ide_read fail: %e", r);
 	// Clear the dirty bit for the disk block page since we just read the
 	// block from disk
 	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in bc_pgfault, sys_page_map: %e", r);
+#endif
 
+	/*
+	// Clear the dirty bit for the disk block page since we just read the
+	// block from disk
+	if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
+		panic("in bc_pgfault, sys_page_map: %e", r);
+	*/
 	// Check that the block we read was allocated. (exercise for
 	// the reader: why do we do this *after* reading the block
 	// in?)
