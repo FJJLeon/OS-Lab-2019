@@ -1,6 +1,6 @@
 
 #include "fs.h"
-
+static void *last_addr = NULL;
 // Return the virtual address of this disk block.
 void*
 diskaddr(uint32_t blockno)
