@@ -34,7 +34,9 @@ i386_init(void)
 
 	// Lab 3 user environment initialization functions
 	env_init();
+	cprintf("env_init ok\n");
 	trap_init();
+	cprintf("trap_init ok\n");;
 
 	// Lab 4 multiprocessor initialization functions
 	mp_init();
@@ -49,7 +51,7 @@ i386_init(void)
 
 	// Acquire the big kernel lock before waking up APs
 	// Your code here:
-
+	lock_kernel();
 	// Starting non-boot CPUs
 	boot_aps();
 
@@ -74,6 +76,9 @@ i386_init(void)
 
 	// Schedule and run the first user environment!
 	sched_yield();
+	cprintf("env create ok\n");
+	// We only have one user environment for now, so just run it.
+	env_run(&envs[0]);
 }
 
 // While boot_aps is booting a given CPU, it communicates the per-core
@@ -126,7 +131,8 @@ mp_main(void)
 	// only one CPU can enter the scheduler at a time!
 	//
 	// Your code here:
-
+	lock_kernel();
+	sched_yield();
 	// Remove this after you finish Exercise 6
 	for (;;);
 }

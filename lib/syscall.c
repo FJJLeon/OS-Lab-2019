@@ -19,7 +19,7 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// The last clause tells the assembler that this can
 	// potentially change the condition codes and arbitrary
 	// memory locations.
-
+	
 	asm volatile("int %1\n"
 		     : "=a" (ret)
 		     : "i" (T_SYSCALL),
@@ -30,7 +30,35 @@ syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		       "D" (a4),
 		       "S" (a5)
 		     : "cc", "memory");
-
+	/*
+	asm volatile(
+			"pushl %%ecx\n"
+			"pushl %%edx\n"
+			"pushl %%ebx\n"
+			"pushl %%esp\n"
+			"pushl %%ebp\n"
+			"pushl %%esi\n"
+			"pushl %%edi\n"
+			"leal after_sysenter_label%=, %%esi\n"
+			"movl %%esp, %%ebp\n"
+			"sysenter\n"
+			"after_sysenter_label%=: \n"
+			"pop %%edi\n"
+			"pop %%esi\n"
+			"pop %%ebp\n"
+			"pop %%esp\n"
+			"pop %%ebx\n"
+			"pop %%edx\n"
+			"pop %%ecx\n"
+			
+			: "=a" (ret)
+			: "a" (num),
+			  "d" (a1),
+			  "c" (a2),
+			  "b" (a3),
+			  "D" (a4)
+			: "cc", "memory");
+	*/	
 	if(check && ret > 0)
 		panic("syscall %d returned %d (> 0)", num, ret);
 
@@ -145,4 +173,10 @@ int
 sys_net_recv(void *buf, uint32_t len)
 {
 	return (unsigned int) syscall(SYS_net_recv, 0, (uint32_t) buf, len, 0, 0, 0);
+}
+
+int
+sys_set_pr(int priority)
+{
+	return syscall(SYS_set_pr, 0, priority, 0, 0, 0, 0);
 }
