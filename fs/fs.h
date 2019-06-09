@@ -16,7 +16,7 @@ uint32_t *bitmap;		// bitmap blocks mapped in memory
 
 /* turn on the eviction of block cache */
 #define EVICTFLAG
-//#undef EVICTFLAG
+#undef EVICTFLAG
 
 /* ide.c */
 bool	ide_probe_disk1(void);
