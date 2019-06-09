@@ -47,6 +47,11 @@ pci_e1000_attach(struct pci_func *pcif)
 	e1000_tx_init();
 	e1000_rx_init();
 	pci_func_enable(pcif);
+	cprintf("HHHHHHHHHHHHH base: 0x%x, size: 0x%x\n", pcif->reg_base[0], pcif->reg_size[0]);
+	// base: 0xfebc0000, size: 0x20000
+	//boot_map_region(kern_pgdir, KSTACKTOP, pcif->reg_size[0], pcif->reg_base[0], PTE_PCD | PTE_PWT | PTE_W);
+	base = mmio_map_region(pcif->reg_base[0], sizeof(struct E1000));
+	cprintf("e1000 status: 0x%x\n", base->STATUS);
 	return 0;
 }
 
