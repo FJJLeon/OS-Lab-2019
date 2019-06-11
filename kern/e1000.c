@@ -24,19 +24,20 @@ e1000_tx_init()
 	}
 	// Set hardward registers
 	// Look kern/e1000.h to find useful definations
+	// set TD Base Address register
 	base->TDBAL = PADDR(tx_descs);
 	base->TDBAH = 0;
-
+	// set TD Length register
 	base->TDLEN = sizeof(tx_descs);
-
+	// set TD head and tail register
 	base->TDH = 0;
 	base->TDT = 0;
-	
+	// set Transmit Control register
 	base->TCTL |= E1000_TCTL_EN;
 	base->TCTL |= E1000_TCTL_PSP;
 	base->TCTL |= E1000_TCTL_CT_ETHER;
 	base->TCTL |= E1000_TCTL_COLD_FULL_DUPLEX;
-
+	// set Transmit Inter Packet Gap register
 	base->TIPG = E1000_TIPG_DEFAULT;
 
 	return 0;
@@ -86,6 +87,23 @@ e1000_tx(const void *buf, uint32_t len)
 {
 	// Send 'len' bytes in 'buf' to ethernet
 	// Hint: buf is a kernel virtual address
+	if(buf == NULL || len < 0 || len > MAX_PKTSIZE)
+    	return -E_INVAL;
+		
+	uint32_t tdt = base->TDT;
+	// check the next descriptor is free
+	if(!(tx_descs[tdt].status & E1000_TX_STATUS_DD))
+		return -E_INVAL;// seems queue full and should retry
+
+	// set up next descriptor
+	memset(tx_buf[tdt], 0 , sizeof(tx_buf[tdt]));
+	memmove(tx_buf[tdt], buf, len);
+	tx_descs[tdt].length = len;
+	tx_descs[tdt].cmd |= E1000_TX_CMD_EOP;
+	tx_descs[tdt].cmd |= E1000_TX_CMD_RS;
+	tx_descs[tdt].status &= ~E1000_TX_STATUS_DD;
+	// update TDT
+	base->TDT = (tdt + 1) % N_TXDESC;
 
 	return 0;
 }

@@ -6,6 +6,10 @@ umain(int argc, char **argv)
 {
 	cprintf("hello, world\n");
 	cprintf("i am environment %08x\n", thisenv->env_id);
+
+	char test[100]="123456";
+	sys_net_send(test,5);
+
 	const int childnum = 3;
 	for (int i=1; i<=childnum; i++) {
 		int pid = fork();
