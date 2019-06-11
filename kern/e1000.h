@@ -3,6 +3,8 @@
 
 #include <kern/pci.h>
 
+#define MAX_PKTSIZE 1518
+
 #define E1000_VID 0x8086
 #define E1000_DID 0x100e
 
