@@ -22,6 +22,8 @@ output(envid_t ns_envid)
 		}
 		// syscall send pkt, if queue full, yield or loop
 		while ((r = sys_net_send(nsipcbuf.pkt.jp_data, nsipcbuf.pkt.jp_len)) < 0) {
+			if (r != -E_AGAIN)
+				panic("output env: send fail but not full\n");
 			cprintf("output env: net send queue full\n");
 			sys_yield();
 		}
