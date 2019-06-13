@@ -17,7 +17,7 @@ input(envid_t ns_envid)
 
 	int r, len;
 	char buf[2048];
-	while(1) {
+	while(true) {
 		// read a packet from the device driver
 		if((len = sys_net_recv(buf, 2048)) < 0) {
 			sys_yield();

@@ -13,7 +13,6 @@ struct E1000 {
 	volatile uint32_t CTRL;             /* 0x00000  Device Control - RW */
 	volatile uint32_t CTRL_DUP;         /* 0x00004  Device Control Duplicate (Shadow) - RW */
 	volatile const uint32_t STATUS;     /* 0x00008  Device Status - RO */
-	uint32_t reserved[49];
 	volatile uint32_t IMS;              /* 0x000D0  Interrupt Mask Set - RW */
 	uint32_t reserved2;
 	volatile uint32_t IMC;              /* 0x000D8  Interrupt Mask Clear - WO */
