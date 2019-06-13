@@ -9,7 +9,7 @@ static struct E1000 *base;
 #define N_TXDESC (PGSIZE / sizeof(struct tx_desc))
 //#define N_TXDESC 64
 struct tx_desc tx_descs[N_TXDESC] __attribute__((aligned(16)));
-char tx_buf[N_TXDESC][MAX_PKTSIZE];
+char tx_buf[N_TXDESC][TX_PKT_SIZE];
 
 int
 e1000_tx_init()
@@ -47,7 +47,7 @@ e1000_tx_init()
 //struct rx_desc *rx_descs;
 #define N_RXDESC (PGSIZE / sizeof(struct rx_desc))
 struct rx_desc rx_descs[N_RXDESC];
-char rx_buf[N_RXDESC][MAX_PKTSIZE];
+char rx_buf[N_RXDESC][RX_PKT_SIZE];
 
 int
 e1000_rx_init()
@@ -109,7 +109,7 @@ e1000_tx(const void *buf, uint32_t len)
 {
 	// Send 'len' bytes in 'buf' to ethernet
 	// Hint: buf is a kernel virtual address
-	if(buf == NULL || len < 0 || len > MAX_PKTSIZE)
+	if(buf == NULL || len < 0 || len > TX_PKT_SIZE)
     	return -E_INVAL;
 		
 	uint32_t tdt = base->TDT;
@@ -141,6 +141,20 @@ e1000_rx(void *buf, uint32_t len)
 	// the packet
 	// Do not forget to reset the decscriptor and
 	// give it back to hardware by modifying RDT
+	if (buf == NULL || len < 0)
+		return -E_INVAL;
 
-	return 0;
+	uint32_t rdt = (base->RDT + 1) % N_RXDESC;
+	// check receive queue empty
+	if(!(rx_descs[rdt].status & E1000_RX_STATUS_DD)){
+		return -E_AGAIN;	// no pkt received, retry
+	}
+
+	len = rx_descs[rdt].length;
+	// make rdt ready to receive
+	rx_descs[rdt].status &= ~E1000_RX_STATUS_DD;
+	memcpy(buf, rx_buf[rdt], len);
+	base->RDT = rdt;
+	// return the length of receiving pkt
+	return len;
 }
