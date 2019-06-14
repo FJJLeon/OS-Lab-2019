@@ -180,3 +180,9 @@ sys_set_pr(int priority)
 {
 	return syscall(SYS_set_pr, 0, priority, 0, 0, 0, 0);
 }
+
+int
+sys_net_get_mac(uint8_t *mac_store)
+{
+	return syscall(SYS_net_get_mac, 0, (uint32_t) mac_store, 0, 0, 0, 0);
+}

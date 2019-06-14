@@ -4,6 +4,9 @@
 #include <inc/error.h>
 
 static struct E1000 *base;
+#ifdef DY_MAC
+static uint32_t RAL, RAH;
+#endif
 
 //struct tx_desc *tx_descs;
 #define N_TXDESC (PGSIZE / sizeof(struct tx_desc))
@@ -63,9 +66,36 @@ e1000_rx_init()
 	}
 	// Set hardward registers
 	// Look kern/e1000.h to find useful definations
+#ifndef DY_MAC
 	// set card MAC address
 	base->RAL = QEMU_MAC_LOW;
 	base->RAH = QEMU_MAC_HIGH;
+#else
+	// Challenge: read MAC address from EEPROM
+	base->EERD = 0x0 << E1000_EEPROM_RW_ADDR_SHIFT;
+	base->EERD |= E1000_EEPROM_START;
+	while (!(base->EERD & E1000_EEPROM_DONE));
+	cprintf("base->EERD: 0x%08x\n", base->EERD);
+	base->RAL = (base->EERD >> 16);
+	RAL = (base->EERD >> 16);
+	cprintf("base->RAL 0x%08x, assign: 0x%08x, RAL: 0x%08x\n",base->RAL,base->EERD >> 16, RAL);
+	base->EERD = 0x1 << E1000_EEPROM_RW_ADDR_SHIFT;
+	base->EERD |= E1000_EEPROM_START;
+	while (!(base->EERD & E1000_EEPROM_DONE));
+	cprintf("base->EERD: 0x%08x\n", base->EERD);
+	base->RAL |= base->EERD & 0xffff0000;
+	RAL |= base->EERD & 0xffff0000;
+
+	base->EERD = 0x2 << E1000_EEPROM_RW_ADDR_SHIFT;
+	base->EERD |= E1000_EEPROM_START;
+	while (!(base->EERD & E1000_EEPROM_DONE));
+	cprintf("base->EERD: 0x%08x\n", base->EERD);
+	base->RAH = base->EERD >> 16;
+	RAH = base->EERD >> 16;
+	cprintf("MAC configured to: %02x:%02x:%02x:%02x:%02x:%02x\n",
+		 RAL & 0xff, (RAL>>8) & 0xff, (RAL>>16) & 0xff, (RAL>>24) & 0xff,
+		 RAH & 0xff, (RAH>>8) & 0xff);
+#endif
 	// set TD Base Address register
 	base->RDBAL = PADDR(rx_descs);
 	base->RDBAH = 0;
@@ -116,7 +146,7 @@ e1000_tx(const void *buf, uint32_t len)
 	cprintf("tx tdt:%d, tdh:%d\n", tdt, base->TDH);
 	// check the next descriptor is free
 	if(!(tx_descs[tdt].status & E1000_TX_STATUS_DD))
-		//return -E_AGAIN;// seems queue full and should retry
+		return -E_AGAIN;// seems queue full and should retry
 
 	// set up next descriptor
 	memset(tx_buf[tdt], 0 , sizeof(tx_buf[tdt]));
@@ -157,4 +187,19 @@ e1000_rx(void *buf, uint32_t len)
 	base->RDT = rdt;
 	// return the length of receiving pkt
 	return len;
+}
+
+int
+e1000_read_mac(uint8_t *mac_store)
+{
+	//*(uint32_t*)mac_store = (uint32_t)base->RAL;
+	//*(uint16_t*)(mac_store + 4) = (uint16_t)base->RAH;
+#ifndef DY_MAC
+	*(uint32_t*)mac_store = QEMU_MAC_LOW;
+	*(uint16_t*)(mac_store + 4) = QEMU_MAC_HIGH;
+#else
+	*(uint32_t*)mac_store = RAL;
+	*(uint16_t*)(mac_store + 4) = RAH;
+#endif
+	return 0;
 }

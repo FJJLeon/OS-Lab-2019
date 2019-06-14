@@ -59,7 +59,7 @@ low_level_init(struct netif *netif)
     netif->hwaddr_len = 6;
     netif->mtu = 1500;
     netif->flags = NETIF_FLAG_BROADCAST;
-
+    /*
     // MAC address is hardcoded to eliminate a system call
     netif->hwaddr[0] = 0x52;
     netif->hwaddr[1] = 0x54;
@@ -67,6 +67,9 @@ low_level_init(struct netif *netif)
     netif->hwaddr[3] = 0x12;
     netif->hwaddr[4] = 0x34;
     netif->hwaddr[5] = 0x56;
+    */
+    sys_net_get_mac(netif->hwaddr);
+    cprintf("in lwip, hwaddr: 0x%08x\n", netif->hwaddr);
 }
 
 /*

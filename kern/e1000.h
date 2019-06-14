@@ -3,6 +3,9 @@
 
 #include <kern/pci.h>
 
+#define DY_MAC
+//#undef DY_MAC
+
 #define TX_PKT_SIZE 1518
 #define RX_PKT_SIZE 2048
 
@@ -13,6 +16,9 @@ struct E1000 {
 	volatile uint32_t CTRL;             /* 0x00000  Device Control - RW */
 	volatile uint32_t CTRL_DUP;         /* 0x00004  Device Control Duplicate (Shadow) - RW */
 	volatile const uint32_t STATUS;     /* 0x00008  Device Status - RO */
+	uint32_t reserved[2];
+	volatile uint32_t EERD;				/* 0x00014  EEPROM Read - RW */
+	uint32_t reserveda[46];
 	volatile uint32_t IMS;              /* 0x000D0  Interrupt Mask Set - RW */
 	uint32_t reserved2;
 	volatile uint32_t IMC;              /* 0x000D8  Interrupt Mask Clear - WO */
@@ -84,5 +90,17 @@ int pci_e1000_attach(struct pci_func *pcif);
 int e1000_tx_init();
 int e1000_tx(const void *buf, uint32_t len);
 int e1000_rx(void *buf, uint32_t len);
+
+int e1000_read_mac(uint8_t *mac_store);
+#ifdef DY_MAC
+// EEPROM Control
+#define E1000_EEPROM_DONE   0x10 /* Offset to READ/WRITE done bit */
+#define E1000_EEPROM_START  1    /* First bit for telling part to start operation */
+#define E1000_EEPROM_RW_ADDR_SHIFT 0x8  /* Shift to the address bits */
+
+struct EEPROM {
+
+};
+#endif
 
 #endif  // SOL >= 6
