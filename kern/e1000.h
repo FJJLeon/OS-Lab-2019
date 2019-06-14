@@ -4,7 +4,7 @@
 #include <kern/pci.h>
 
 #define DY_MAC
-//#undef DY_MAC
+#undef DY_MAC
 
 #define TX_PKT_SIZE 1518
 #define RX_PKT_SIZE 2048

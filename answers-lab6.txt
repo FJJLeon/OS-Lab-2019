@@ -1,0 +1,50 @@
+﻿Lab6 Questions & Challenge
+516030910006 方俊杰
+
+### Question
+1. transmit 在 output 环境中实现，使用 ipc 获取到核心网络环境发送的数据包，
+使用系统调用 sys_net_send 尝试发送，syscall 最终会调用 e1000_tx，在其实现中，
+获取到 TDT，即发送队列的尾部，通过查看 DD 位状态可以知道是否可用，
+如果不可用则代表队列满，此时返回 E_AGAIN，告诉 output 环境进行重试，
+故output 环境的实现中，对于 sys_net_send 的调用也是写在循环中。
+
+2. receive 中我的实现就是轮询,类似传输，每次调用 sys_net_recv 尝试收包，
+然后使用 ipc_send 发送给核心网络环境。特别的，如果队列是空的即网卡没有收到包，
+那么通过读取到的RDT状态可以判断，然后返回 E_AGAIN，input 环境就会
+放弃CPU等待下次被调度到重试收包过程。
+
+3. 其 HTML 为：
+<html>
+    <head>
+        <title>jhttpd on JOS</title>
+    </head>
+    <body>
+        <center>
+            <h2>This file came from JOS.</h2>
+            <marquee>Cheesy web page!</marquee>
+        </center>
+    </body>
+</html>
+显示的是 “This file came from JOS.”，
+“Cheesy web page!” 在下面滚动，
+标题为 “jhttpd on JOS”
+
+4. 大概 25 个小时。遇到了一些问题耗费了较多时间：比如 QEMU 版本问题耗费了较长时间配置环境，
+接收数据包调试了很久等。
+
+### Challenge
+使用 EEPROM 加载 E1000 网卡的 MAX 地址，配置其他 MAC 地址。
+首先查阅了手册了解 EEPROM 的使用方法，其格式见手册 13.4.4 节，
+有 START、DONE、ADDR、DATA 四个字段。当读取一个 word 时，
+软件在 ADDR 写入需要读取数据的地址，同步在 START字段写入 1b，
+然后 EEPROM 会读取数据放到 DATA 字段，并设置 DONE 为 1b。
+去读时可以轮询该字段直到 DONE 被设置，此时就可以使用 DATA 字段值。
+另外需要一个新的 syscall 来获取 E1000 网卡的 MAC 值供 lwip 使用。
+实现:
+在 inc/lib.h、inc/syscall.h、lib/syscall.c、kernel/syscall.c 里
+实现并分发一个新的 syscall 叫做 sys_net_get_mac 用于调用一个新定义
+在 e1000.h 中的 e1000_read_mac 函数，该函数会返回 E1000 网卡设置的 MAC 地址。
+在 e1000.h 中使用了条件编译，声明了一个 DY_MAC 变量，在其被定义时，
+会宏定义一系列用于 EEPROM 读取的常量，在 e1000.c 定义两个静态变量
+RAL、RAH 保存设置的 MAC 地址，在 e1000_rx_init 函数中会使用 EEPROM 
+进行三次读取操作并保存得到的值。
