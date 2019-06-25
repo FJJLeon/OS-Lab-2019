@@ -62,6 +62,7 @@ int	sys_ipc_recv(void *rcv_pg);
 unsigned int sys_time_msec(void);
 int sys_net_send(const void *buf, uint32_t len);
 int sys_net_recv(void *buf, uint32_t len);
+int sys_net_get_mac(uint8_t *mac_store);
 
 // This must be inlined.  Exercise for reader: why?
 static inline envid_t __attribute__((always_inline))
@@ -142,6 +143,8 @@ int	pipeisclosed(int pipefd);
 
 // wait.c
 void	wait(envid_t env);
+
+int sys_set_pr(int priority); // for fixed-priority scheduler
 
 /* File open modes */
 #define	O_RDONLY	0x0000		/* open for reading only */
